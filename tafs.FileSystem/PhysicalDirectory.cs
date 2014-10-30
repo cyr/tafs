@@ -6,7 +6,7 @@ using Dokan;
 
 namespace tafs.FileSystem
 {
-    public class PhysicalDirectory : IVirtualDirectory
+    public class PhysicalDirectory : IWriteableDirectory
     {
         private readonly DirectoryInfo _directory;
 
@@ -20,6 +20,11 @@ namespace tafs.FileSystem
         public void Create()
         {
             _directory.Create();
+        }
+
+        public void Delete()
+        {
+            _directory.Delete(true);
         }
 
         public FileInformation GetFileInformation()

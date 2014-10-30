@@ -1,4 +1,5 @@
 using System.IO;
+using Dokan;
 
 namespace tafs.FileSystem
 {
@@ -18,14 +19,19 @@ namespace tafs.FileSystem
             return path.TrimEnd(Path.DirectorySeparatorChar).Substring(path.LastIndexOf(Path.DirectorySeparatorChar) + 1);
         }
 
-        public IVirtualFile ToFile()
+        public IWriteableFile ToFile()
         {
             return new PhysicalFile(_path);
         }
 
-        public IVirtualDirectory ToDirectory()
+        public IWriteableDirectory ToDirectory()
         {
             return new PhysicalDirectory(_path);
+        }
+
+        public FileInformation GetFileInformation()
+        {
+            return new FileInformation { Length = -1, FileName = Name, Attributes = new FileAttributes() };
         }
 
         public bool Exists { get { return false; } }
@@ -33,6 +39,5 @@ namespace tafs.FileSystem
         public bool IsFile { get { return false; } }
         public string Name { get; private set; }
         public string FullName { get { return _path; } }
-
     }
 }

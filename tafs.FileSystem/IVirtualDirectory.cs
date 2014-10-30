@@ -6,7 +6,6 @@ namespace tafs.FileSystem
 {
     public interface IVirtualDirectory : IVirtualPath
     {
-        void Create();
         FileAttributes Attributes { get; }
         DateTime CreationTime { get; }
         DateTime LastAccessTime { get; }

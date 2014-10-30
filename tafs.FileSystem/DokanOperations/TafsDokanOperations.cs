@@ -19,16 +19,6 @@ namespace tafs.FileSystem
             _virtualFilesystem = new VirtualFilesystem(pathToMount);
         }
 
-        private static string GetSevenZipDllPath()
-        {
-            return Path.Combine(GetExecutingPath(), "7z.dll");
-        }
-
-        private static string GetExecutingPath()
-        {
-            return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        }
-
         public int CreateFile(string filename, FileAccess access, FileShare share, FileMode mode, FileOptions options, DokanFileInfo info)
         {
             var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
@@ -48,7 +38,7 @@ namespace tafs.FileSystem
 
             var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
 
-            if (virtualPath.IsDirectory && virtualPath.Exists)
+            if (virtualPath.Exists && virtualPath.IsDirectory)
                 return DokanNet.DOKAN_SUCCESS;
 
             return -DokanNet.ERROR_PATH_NOT_FOUND;
@@ -110,75 +100,113 @@ namespace tafs.FileSystem
 
         public int FindFiles(string filename, ArrayList files, DokanFileInfo info)
         {
-            var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
-            var virtualDirectory = virtualPath as IVirtualDirectory;
-
-            if (virtualDirectory == null)
-                return DokanNet.DOKAN_ERROR;
-
-            files.AddRange(_virtualFilesystem.FindInPath(virtualDirectory));
-
-            return DokanNet.DOKAN_SUCCESS;
+            return ExecuteIfType<IVirtualDirectory>(filename, 
+                virtualDirectory => files.AddRange(_virtualFilesystem.FindInPath(virtualDirectory)));
         }
 
         public int SetFileAttributes(string filename, FileAttributes attr, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            return ExecuteIfType<IWriteableFile>(filename, 
+                writeableFile => _virtualFilesystem.SetAttributes(writeableFile, attr));
         }
 
         public int SetFileTime(string filename, DateTime ctime, DateTime atime, DateTime mtime, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            return ExecuteIfType<IWriteableFile>(filename, 
+                writeableFile => _virtualFilesystem.SetFileTime(writeableFile, ctime, atime, mtime));
         }
 
         public int DeleteFile(string filename, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            return ExecuteIfType<IWriteableFile>(filename, 
+                writeableFile =>_virtualFilesystem.Delete(writeableFile));
         }
 
         public int DeleteDirectory(string filename, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            return ExecuteIfType<IWriteableDirectory>(filename, 
+                writeableDirectory => _virtualFilesystem.Delete(writeableDirectory));
         }
 
         public int MoveFile(string filename, string newname, bool replace, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            var targetPath = _virtualFilesystem.GetVirtualPath(newname);
+
+            return ExecuteIfType<IWriteableFile>(filename,
+                writeableFile => _virtualFilesystem.Move(writeableFile, targetPath));
         }
 
         public int SetEndOfFile(string filename, long length, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            // TODO: Support keeping streams open
+            return DokanNet.DOKAN_SUCCESS;
         }
 
         public int SetAllocationSize(string filename, long length, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            return ExecuteIfType<IWriteableFile>(filename,
+                writeableFile => _virtualFilesystem.AllocateSize(writeableFile, length));
         }
 
         public int LockFile(string filename, long offset, long length, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            // TODO: Locking?
+            return DokanNet.DOKAN_SUCCESS;
         }
 
         public int UnlockFile(string filename, long offset, long length, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            // TODO: Locking?
+            return DokanNet.DOKAN_SUCCESS;
         }
 
         public int GetDiskFreeSpace(ref ulong freeBytesAvailable, ref ulong totalBytes, ref ulong totalFreeBytes, DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            return _virtualFilesystem.GetDiskFreeSpace(out freeBytesAvailable, out totalBytes, out totalFreeBytes);
         }
 
         public int Unmount(DokanFileInfo info)
         {
-            throw new NotImplementedException();
+            // TODO: Unmount routines?
+            return DokanNet.DOKAN_SUCCESS;
         }
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+        }
+
+        private int ExecuteIfType<T>(string filename, Func<T, int> func) where T : class, IVirtualPath
+        {
+            var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
+            var instanceOfType = virtualPath as T;
+
+            if (instanceOfType == null)
+                return DokanNet.DOKAN_ERROR;
+
+            return func(instanceOfType);
+        }
+
+        private int ExecuteIfType<T>(string filename, Action<T> func) where T : class, IVirtualPath
+        {
+            var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
+            var instanceOfType = virtualPath as T;
+
+            if (instanceOfType == null)
+                return DokanNet.DOKAN_ERROR;
+
+            func(instanceOfType);
+
+            return DokanNet.DOKAN_SUCCESS;
+        }
+
+        private static string GetSevenZipDllPath()
+        {
+            return Path.Combine(GetExecutingPath(), "7z.dll");
+        }
+
+        private static string GetExecutingPath()
+        {
+            return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         }
     }
 }

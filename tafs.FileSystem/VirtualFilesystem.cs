@@ -113,6 +113,84 @@ namespace tafs.FileSystem
             return virtualDirectory.GetChildren().Select(virtualPath => virtualPath.GetFileInformation()).ToList();
         }
 
+        public int SetAttributes(IWriteableFile writeableFile, FileAttributes attr)
+        {
+            try
+            {
+                writeableFile.SetAttributes(attr);
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return -DokanNet.ERROR_ACCESS_DENIED;
+            }
+        }
+
+        public int SetFileTime(IWriteableFile writeableFile, DateTime ctime, DateTime atime, DateTime mtime)
+        {
+            try
+            {
+                writeableFile.SetFileTime(ctime, atime, mtime);
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return -DokanNet.ERROR_ACCESS_DENIED;
+            }
+        }
+
+        public int Delete(IWriteableFile writeableFile)
+        {
+            try
+            {
+                writeableFile.Delete();
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return -DokanNet.ERROR_ACCESS_DENIED;
+            }
+        }
+
+        public int Delete(IWriteableDirectory writeableDirectory)
+        {
+            try
+            {
+                writeableDirectory.Delete();
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return -DokanNet.ERROR_ACCESS_DENIED;
+            }
+        }
+
+        public int Move(IWriteableFile writeableFile, IVirtualPath targetPath)
+        {
+            try
+            {
+                writeableFile.MoveTo(targetPath);
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return -DokanNet.ERROR_ACCESS_DENIED;
+            }
+        }
+
+        public int AllocateSize(IWriteableFile writeableFile, long length)
+        {
+            try
+            {
+                writeableFile.AllocateSize(length);
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return -DokanNet.ERROR_ACCESS_DENIED;
+            }
+        }
+
         private static IVirtualPath ConvertNonExistingPathToVirtualFilePath(IVirtualPath virtualPath)
         {
             return ((NonExistingPath)virtualPath).ToFile();
@@ -175,6 +253,22 @@ namespace tafs.FileSystem
             fileinfo.Length = virtualFile.Size;
 
             return DokanNet.DOKAN_SUCCESS;
+        }
+
+        public int GetDiskFreeSpace(out ulong freeBytesAvailable, out ulong totalBytes, out ulong totalFreeBytes)
+        {
+            var driveInfo = GetDriveInfoForRootFolder();
+
+            freeBytesAvailable = (ulong)driveInfo.AvailableFreeSpace;
+            totalBytes = (ulong)driveInfo.TotalSize;
+            totalFreeBytes = (ulong)driveInfo.TotalFreeSpace;
+
+            return DokanNet.DOKAN_SUCCESS;
+        }
+
+        private DriveInfo GetDriveInfoForRootFolder()
+        {
+            return DriveInfo.GetDrives().FirstOrDefault(info => info.RootDirectory == _rootFolder.Root);
         }
     }
 }
