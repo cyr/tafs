@@ -31,7 +31,7 @@ namespace tafs.FileSystem
 
         private string GetPhysicalPath(string dokanFilename)
         {
-            return Path.Combine(_rootFolder.FullName, dokanFilename);
+            return Path.Combine(_rootFolder.FullName, dokanFilename.TrimStart(Path.DirectorySeparatorChar));
         }
 
         public int CreateFile(IVirtualPath virtualPath, FileAccess access, FileShare share, FileMode mode)
@@ -108,9 +108,18 @@ namespace tafs.FileSystem
             return DokanNet.DOKAN_ERROR;
         }
 
-        public List<FileInformation> FindInPath(IVirtualDirectory virtualDirectory)
+        public int PopulateListFromDirectoryChildren(IVirtualDirectory virtualDirectory, ArrayList files)
         {
-            return virtualDirectory.GetChildren().Select(virtualPath => virtualPath.GetFileInformation()).ToList();
+            try
+            {
+                files.AddRange(GetFileInformationsFromVirtualPath(virtualDirectory));
+
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return -DokanNet.ERROR_ACCESS_DENIED;
+            }
         }
 
         public int SetAttributes(IWriteableFile writeableFile, FileAttributes attr)
@@ -191,6 +200,11 @@ namespace tafs.FileSystem
             }
         }
 
+        private static List<FileInformation> GetFileInformationsFromVirtualPath(IVirtualDirectory virtualDirectory)
+        {
+            return virtualDirectory.GetChildren().Select(virtualPath => virtualPath.GetFileInformation()).ToList();
+        }
+
         private static IVirtualPath ConvertNonExistingPathToVirtualFilePath(IVirtualPath virtualPath)
         {
             return ((NonExistingPath)virtualPath).ToFile();
@@ -268,7 +282,7 @@ namespace tafs.FileSystem
 
         private DriveInfo GetDriveInfoForRootFolder()
         {
-            return DriveInfo.GetDrives().FirstOrDefault(info => info.RootDirectory == _rootFolder.Root);
+            return DriveInfo.GetDrives().FirstOrDefault(info => info.RootDirectory.FullName == _rootFolder.Root.FullName);
         }
     }
 }

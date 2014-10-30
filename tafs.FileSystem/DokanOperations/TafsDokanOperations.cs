@@ -100,8 +100,8 @@ namespace tafs.FileSystem
 
         public int FindFiles(string filename, ArrayList files, DokanFileInfo info)
         {
-            return ExecuteIfType<IVirtualDirectory>(filename, 
-                virtualDirectory => files.AddRange(_virtualFilesystem.FindInPath(virtualDirectory)));
+            return ExecuteIfType<IVirtualDirectory>(filename,
+                virtualDirectory => _virtualFilesystem.PopulateListFromDirectoryChildren(virtualDirectory, files));
         }
 
         public int SetFileAttributes(string filename, FileAttributes attr, DokanFileInfo info)
@@ -184,19 +184,6 @@ namespace tafs.FileSystem
                 return DokanNet.DOKAN_ERROR;
 
             return func(instanceOfType);
-        }
-
-        private int ExecuteIfType<T>(string filename, Action<T> func) where T : class, IVirtualPath
-        {
-            var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
-            var instanceOfType = virtualPath as T;
-
-            if (instanceOfType == null)
-                return DokanNet.DOKAN_ERROR;
-
-            func(instanceOfType);
-
-            return DokanNet.DOKAN_SUCCESS;
         }
 
         private static string GetSevenZipDllPath()
