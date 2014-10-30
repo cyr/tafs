@@ -2,36 +2,22 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Dokan;
 
 namespace tafs.FileSystem
 {
     public class VirtualFilesystem
     {
-        private readonly DirectoryInfo _rootFolder;
+        private readonly VirtualPathProvider _virtualPathProvider;
 
         public VirtualFilesystem(string pathToMount)
         {
-            _rootFolder = new DirectoryInfo(pathToMount);
+            _virtualPathProvider = new VirtualPathProvider(pathToMount);
         }
 
         public IVirtualPath GetVirtualPath(string filename)
         {
-            var path = GetPhysicalPath(filename);
-
-            if (Directory.Exists(path))
-                return new PhysicalDirectory(path);
-
-            if (File.Exists(path))
-                return new PhysicalFile(path);
-
-            return new NonExistingPath(path);
-        }
-
-        private string GetPhysicalPath(string dokanFilename)
-        {
-            return Path.Combine(_rootFolder.FullName, dokanFilename.TrimStart(Path.DirectorySeparatorChar));
+            return _virtualPathProvider.GetVirtualPath(filename);
         }
 
         public int CreateFile(IVirtualPath virtualPath, FileAccess access, FileShare share, FileMode mode)
@@ -200,9 +186,9 @@ namespace tafs.FileSystem
             }
         }
 
-        private static List<FileInformation> GetFileInformationsFromVirtualPath(IVirtualDirectory virtualDirectory)
+        private List<FileInformation> GetFileInformationsFromVirtualPath(IVirtualDirectory virtualDirectory)
         {
-            return virtualDirectory.GetChildren().Select(virtualPath => virtualPath.GetFileInformation()).ToList();
+            return _virtualPathProvider.GetChildren(virtualDirectory);
         }
 
         private static IVirtualPath ConvertNonExistingPathToVirtualFilePath(IVirtualPath virtualPath)
@@ -282,7 +268,7 @@ namespace tafs.FileSystem
 
         private DriveInfo GetDriveInfoForRootFolder()
         {
-            return DriveInfo.GetDrives().FirstOrDefault(info => info.RootDirectory.FullName == _rootFolder.Root.FullName);
+            return _virtualPathProvider.GetDriveInfoForRoot();
         }
     }
 }

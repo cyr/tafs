@@ -10,6 +10,6 @@ namespace tafs.FileSystem
         DateTime CreationTime { get; }
         DateTime LastAccessTime { get; }
         DateTime LastWriteTime { get; }
-        List<IVirtualPath> GetChildren();
+        List<string> GetChildren();
     }
 }

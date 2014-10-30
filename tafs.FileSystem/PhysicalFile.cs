@@ -78,5 +78,11 @@ namespace tafs.FileSystem
         public string Name { get { return _file.Name; } }
         public string FullName { get { return _file.FullName; } }
         public bool Exists { get { return _file.Exists; } }
+        public string Extension { get { return _file.Extension; } }
+
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }

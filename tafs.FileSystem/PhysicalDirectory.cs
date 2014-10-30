@@ -9,12 +9,14 @@ namespace tafs.FileSystem
     public class PhysicalDirectory : IWriteableDirectory
     {
         private readonly DirectoryInfo _directory;
+        private readonly VirtualPathProvider _virtualPathProvider;
 
-        public PhysicalDirectory(string path) : this(new DirectoryInfo(path)) { }
+        public PhysicalDirectory(string path, VirtualPathProvider virtualPathProvider) : this(new DirectoryInfo(path), virtualPathProvider) { }
 
-        public PhysicalDirectory(DirectoryInfo directory)
+        public PhysicalDirectory(DirectoryInfo directory, VirtualPathProvider virtualPathProvider)
         {
             _directory = directory;
+            _virtualPathProvider = virtualPathProvider;
         }
 
         public void Create()
@@ -39,14 +41,9 @@ namespace tafs.FileSystem
             };
         }
 
-        public List<IVirtualPath> GetChildren()
+        public List<string> GetChildren()
         {
-            var children = new List<IVirtualPath>();
-            
-            children.AddRange(_directory.GetDirectories().Select(dir => new PhysicalDirectory(dir.FullName)));
-            children.AddRange(_directory.GetFiles().Select(file => new PhysicalFile(file.FullName)));
-
-            return children;
+            return _directory.GetFileSystemInfos().Select(dir => dir.FullName).ToList();
         }
 
         public FileAttributes Attributes { get { return _directory.Attributes; } }
@@ -59,5 +56,10 @@ namespace tafs.FileSystem
         public bool IsFile { get { return false; } }
         public string Name { get { return _directory.Name; } }
         public string FullName { get { return _directory.FullName; } }
+
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }

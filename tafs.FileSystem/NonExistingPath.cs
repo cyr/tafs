@@ -6,10 +6,12 @@ namespace tafs.FileSystem
     public class NonExistingPath : IVirtualPath
     {
         private readonly string _path;
+        private readonly VirtualPathProvider _virtualPathProvider;
 
-        public NonExistingPath(string path)
+        public NonExistingPath(string path, VirtualPathProvider virtualPathProvider)
         {
             _path = path;
+            _virtualPathProvider = virtualPathProvider;
 
             Name = GetNamePart(path);
         }
@@ -26,7 +28,7 @@ namespace tafs.FileSystem
 
         public IWriteableDirectory ToDirectory()
         {
-            return new PhysicalDirectory(_path);
+            return new PhysicalDirectory(_path, _virtualPathProvider);
         }
 
         public FileInformation GetFileInformation()
@@ -39,5 +41,10 @@ namespace tafs.FileSystem
         public bool IsFile { get { return false; } }
         public string Name { get; private set; }
         public string FullName { get { return _path; } }
+
+        public override string ToString()
+        {
+            return FullName;
+        }
     }
 }
