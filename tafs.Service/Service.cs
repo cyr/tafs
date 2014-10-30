@@ -41,7 +41,7 @@ namespace tafs.Service
 
         private static int MountDokanDevice()
         {
-            var dokanOperations = new SafeDokanOperations(new TafsDokanOperations(@"D:\"));
+            var dokanOperations = new TafsDokanOperations(@"D:\");
             var dokanOptions = new DokanOptions { DebugMode = true, MountPoint = GetMountPoint(), ThreadCount = 5 };
 
             return DokanNet.DokanMain(dokanOptions, dokanOperations);

@@ -27,12 +27,46 @@ namespace tafs.FileSystem
                 var physicalFile = new PhysicalFile(path);
 
                 if (FileIsArchive(physicalFile))
-                    return new ArchiveDirectory(physicalFile);
+                    return new ArchiveDirectory(physicalFile, this);
 
                 return physicalFile;
             }
 
+            var archiveFile = GetArchiveFileFromPath(path);
+
+            return archiveFile ?? CreateNonExistingPath(path);
+        }
+
+        private IVirtualPath CreateNonExistingPath(string path)
+        {
             return new NonExistingPath(path, this);
+        }
+
+        private IVirtualPath GetArchiveFileFromPath(string path)
+        {
+            var fullPath = path;
+            string pathRoot = Path.GetPathRoot(path);
+
+            do
+            {
+                path = Path.GetDirectoryName(path);
+
+                if (IsArchiveFile(path))
+                {
+                    var archiveDirectory = GetVirtualPath(path) as ArchiveDirectory;
+
+                    if (archiveDirectory != null) 
+                        return archiveDirectory.GetArchivePath(fullPath);
+                }
+            } 
+            while (path != pathRoot);
+
+            return null;
+        }
+
+        private bool IsArchiveFile(string path)
+        {
+            return _archiveExtensions.Contains(Path.GetExtension(path));
         }
 
         public DriveInfo GetDriveInfoForRoot()
