@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Dokan;
 using SevenZip;
+using tafs.FileSystem.IO;
 
 namespace tafs.FileSystem
 {
@@ -45,12 +47,34 @@ namespace tafs.FileSystem
             using (var extractor = new SevenZipExtractor(FullName))
             {
                 var archiveFileInfo = GetArchiveFileInfo(extractor, originalPath);
-
+                
                 if (!archiveFileInfo.HasValue)
                     return new NonExistingPath(originalPath, _virtualPathProvider);
 
                 return ReturnArchiveContentPath(originalPath, archiveFileInfo.Value);
             }
+        }
+
+        public Stream OpenFileStream(ArchiveContentFile contentFile)
+        {
+            var extractor = new SevenZipExtractor(FullName);
+            var localPath = GetArchiveLocalPath(contentFile.FullName);
+
+            var archiveContentStream = new ArchiveContentStream(extractor);
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    extractor.ExtractFile(localPath, archiveContentStream);
+                }
+                catch {
+                    
+                }
+                
+            });
+
+            return archiveContentStream;
         }
 
         private IVirtualPath ReturnArchiveContentPath(string originalPath, ArchiveFileInfo archiveFileInfo)

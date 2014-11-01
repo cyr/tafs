@@ -4,12 +4,12 @@ using System.IO;
 using System.Reflection;
 using Dokan;
 using SevenZip;
+using tafs.FileSystem.Handles;
 
 namespace tafs.FileSystem
 {
     public class TafsDokanOperations : DokanOperations, IDisposable
     {
-        private int _handles;
         private readonly VirtualFilesystem _virtualFilesystem;
 
         public TafsDokanOperations(string pathToMount)
@@ -23,20 +23,17 @@ namespace tafs.FileSystem
         {
             var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
 
-            info.Context = _handles++;
+            info.Context = _virtualFilesystem.CreateHandle(virtualPath, access, share, mode);
             info.IsDirectory = virtualPath.IsDirectory;
 
-            if (virtualPath.IsDirectory)
-                return DokanNet.DOKAN_SUCCESS;
-
-            return _virtualFilesystem.CreateFile(virtualPath, access, share, mode);
+            return info.Context != null ? DokanNet.DOKAN_SUCCESS : -DokanNet.ERROR_FILE_NOT_FOUND;
         }
 
         public int OpenDirectory(string filename, DokanFileInfo info)
         {
-            info.Context = _handles++;
-
             var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
+            
+            info.Context = _virtualFilesystem.CreateHandle(virtualPath);
 
             if (virtualPath.Exists && virtualPath.IsDirectory)
                 return DokanNet.DOKAN_SUCCESS;
@@ -56,34 +53,29 @@ namespace tafs.FileSystem
 
         public int Cleanup(string filename, DokanFileInfo info)
         {
+            // TODO: uuh, probably check what this method is actually supposed to do?
             return DokanNet.DOKAN_SUCCESS;
         }
 
         public int CloseFile(string filename, DokanFileInfo info)
         {
-            return DokanNet.DOKAN_SUCCESS;
+            var handleId = GetHandleId(info);
+
+            return _virtualFilesystem.CloseFile(handleId);
         }
 
         public int ReadFile(string filename, byte[] buffer, ref uint readBytes, long offset, DokanFileInfo info)
         {
-            var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
-            var virtualFile = virtualPath as IVirtualFile;
+            var handleId = GetHandleId(info);
 
-            if (virtualFile == null)
-                return -DokanNet.ERROR_ACCESS_DENIED;
-
-            return _virtualFilesystem.ReadFile(virtualFile, buffer, ref readBytes, offset);
+            return _virtualFilesystem.ReadFile(handleId, buffer, ref readBytes, offset);
         }
 
         public int WriteFile(string filename, byte[] buffer, ref uint writtenBytes, long offset, DokanFileInfo info)
         {
-            var virtualPath = _virtualFilesystem.GetVirtualPath(filename);
-            var writeableFile = virtualPath as IWriteableFile;
+            var handleId = GetHandleId(info);
 
-            if (writeableFile == null)
-                return -DokanNet.ERROR_ACCESS_DENIED;
-
-            return _virtualFilesystem.WriteFile(writeableFile, buffer, ref writtenBytes, offset);
+            return _virtualFilesystem.WriteFile(handleId, buffer, ref writtenBytes, offset);
         }
 
         public int FlushFileBuffers(string filename, DokanFileInfo info)
@@ -101,7 +93,7 @@ namespace tafs.FileSystem
         public int FindFiles(string filename, ArrayList files, DokanFileInfo info)
         {
             return ExecuteIfType<IVirtualDirectory>(filename,
-                virtualDirectory => _virtualFilesystem.PopulateListFromDirectoryChildren(virtualDirectory, files));
+                virtualDirectory => _virtualFilesystem.PopulateListFromDirectory(virtualDirectory, files));
         }
 
         public int SetFileAttributes(string filename, FileAttributes attr, DokanFileInfo info)
@@ -173,6 +165,16 @@ namespace tafs.FileSystem
 
         public void Dispose()
         {
+        }
+
+        private static VirtualFileSystemHandleId GetHandleId(DokanFileInfo info)
+        {
+            var handleId = info.Context as VirtualFileSystemHandleId;
+
+            if (handleId == null)
+                throw new Exception("Trying to close file without providing a handle.");
+
+            return handleId;
         }
 
         private int ExecuteIfType<T>(string filename, Func<T, int> func) where T : class, IVirtualPath

@@ -15,11 +15,6 @@ namespace tafs.FileSystem
             _file = file;
         }
 
-        public Stream Create(FileMode mode, FileAccess access, FileShare share)
-        {
-            return _file.Open(mode, access, share);
-        }
-
         public void Delete()
         {
             _file.Delete();

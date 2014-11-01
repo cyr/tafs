@@ -3,32 +3,24 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using Dokan;
+using tafs.FileSystem.Handles;
 
 namespace tafs.FileSystem
 {
     public class VirtualFilesystem
     {
-        private readonly VirtualPathProvider _virtualPathProvider;
+        private readonly VirtualPathProvider _pathProvider;
+        private readonly VirtualFileSystemHandleManager _handleManager;
 
         public VirtualFilesystem(string pathToMount)
         {
-            _virtualPathProvider = new VirtualPathProvider(pathToMount);
+            _pathProvider = new VirtualPathProvider(pathToMount);
+            _handleManager = new VirtualFileSystemHandleManager();
         }
 
         public IVirtualPath GetVirtualPath(string filename)
         {
-            return _virtualPathProvider.GetVirtualPath(filename);
-        }
-
-        public int CreateFile(IVirtualPath virtualPath, FileAccess access, FileShare share, FileMode mode)
-        {
-            if (!virtualPath.Exists)
-                virtualPath = ConvertNonExistingPathToVirtualFilePath(virtualPath);
-
-            if (virtualPath is IWriteableFile)
-                return Create(virtualPath as IWriteableFile, access, share, mode);
-
-            return OpenForReading(virtualPath as IVirtualFile, access, share, mode);
+            return _pathProvider.GetVirtualPath(filename);
         }
 
         public int CreateDirectory(NonExistingPath path)
@@ -47,17 +39,18 @@ namespace tafs.FileSystem
             }
         }
 
-        public int ReadFile(IVirtualFile virtualFile, byte[] buffer, ref uint readBytes, long offset)
+        public int ReadFile(VirtualFileSystemHandleId handleId, byte[] buffer, ref uint readBytes, long offset)
         {
             try
             {
-                using (var stream = virtualFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
-                {
-                    stream.Seek(offset, SeekOrigin.Begin);
-                    readBytes = (uint)stream.Read(buffer, 0, buffer.Length);
+                var handle = _handleManager.GetHandle(handleId);
 
-                    return DokanNet.DOKAN_SUCCESS;
-                }
+                if (handle.Stream.CanSeek && offset != 0)
+                    handle.Stream.Seek(offset, SeekOrigin.Begin);
+
+                readBytes = (uint)handle.Stream.Read(buffer, 0, buffer.Length);
+
+                return DokanNet.DOKAN_SUCCESS;
             }
             catch (Exception)
             {
@@ -65,17 +58,35 @@ namespace tafs.FileSystem
             }
         }
 
-        public int WriteFile(IWriteableFile writeableFile, byte[] buffer, ref uint writtenBytes, long offset)
+        public int CloseFile(VirtualFileSystemHandleId handleId)
         {
             try
             {
-                using (var stream = writeableFile.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-                {
-                    stream.Write(buffer, (int)offset, buffer.Length);
-                    writtenBytes = (uint)buffer.Length;
+                _handleManager.CloseHandle(handleId);
 
-                    return DokanNet.DOKAN_SUCCESS;
-                }
+                return DokanNet.DOKAN_SUCCESS;
+            }
+            catch (Exception)
+            {
+                return DokanNet.DOKAN_ERROR;
+            }
+        }
+
+        public VirtualFileSystemHandleId CreateHandle(IVirtualPath virtualPath, FileAccess access = (FileAccess)0, FileShare share = (FileShare)0, FileMode mode = (FileMode)0)
+        {
+            return _handleManager.CreateHandle(virtualPath, access, share, mode);
+        }
+
+        public int WriteFile(VirtualFileSystemHandleId handleId, byte[] buffer, ref uint writtenBytes, long offset)
+        {
+            try
+            {
+                var handle = _handleManager.GetHandle(handleId);
+
+                handle.Stream.Write(buffer, (int)offset, buffer.Length);
+                writtenBytes = (uint)buffer.Length;
+
+                return DokanNet.DOKAN_SUCCESS;
             }
             catch (Exception)
             {
@@ -94,7 +105,7 @@ namespace tafs.FileSystem
             return DokanNet.DOKAN_ERROR;
         }
 
-        public int PopulateListFromDirectoryChildren(IVirtualDirectory virtualDirectory, ArrayList files)
+        public int PopulateListFromDirectory(IVirtualDirectory virtualDirectory, ArrayList files)
         {
             try
             {
@@ -188,48 +199,7 @@ namespace tafs.FileSystem
 
         private List<FileInformation> GetFileInformationsFromVirtualPath(IVirtualDirectory virtualDirectory)
         {
-            return _virtualPathProvider.GetChildren(virtualDirectory);
-        }
-
-        private static IVirtualPath ConvertNonExistingPathToVirtualFilePath(IVirtualPath virtualPath)
-        {
-            return ((NonExistingPath)virtualPath).ToFile();
-        }
-
-        private int OpenForReading(IVirtualFile virtualFile, FileAccess access, FileShare share, FileMode mode)
-        {
-            if (access.HasFlag(FileAccess.Write))
-                return -DokanNet.ERROR_ACCESS_DENIED;
-
-            return Open(virtualFile, access, share, mode);
-        }
-
-        private static int Open(IVirtualFile virtualFile, FileAccess access, FileShare share, FileMode mode)
-        {
-            try
-            {
-                virtualFile.Open(mode, access, share).Dispose(); // TODO: Keep stream open?
-
-                return DokanNet.DOKAN_SUCCESS;
-            }
-            catch (Exception)
-            {
-                return DokanNet.DOKAN_ERROR;
-            }
-        }
-
-        private static int Create(IWriteableFile writeableFile, FileAccess access, FileShare share, FileMode mode)
-        {
-            try
-            {
-                writeableFile.Create(mode, access, share).Dispose(); // TODO: Keep stream open?
-
-                return DokanNet.DOKAN_SUCCESS;
-            }
-            catch (Exception)
-            {
-                return DokanNet.DOKAN_ERROR;
-            }
+            return _pathProvider.GetChildren(virtualDirectory);
         }
 
         private int PopulateFileInformationFromDirectory(IVirtualDirectory virtualDirectory, FileInformation fileinfo)
@@ -268,7 +238,7 @@ namespace tafs.FileSystem
 
         private DriveInfo GetDriveInfoForRootFolder()
         {
-            return _virtualPathProvider.GetDriveInfoForRoot();
+            return _pathProvider.GetDriveInfoForRoot();
         }
     }
 }

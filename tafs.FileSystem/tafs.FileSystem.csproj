@@ -66,9 +66,12 @@
     <Compile Include="ArchiveContentFolder.cs" />
     <Compile Include="ArchiveDirectory.cs" />
     <Compile Include="ArchiveContentFile.cs" />
+    <Compile Include="Handles\VirtualFileSystemHandleId.cs" />
+    <Compile Include="IO\ArchiveContentStream.cs" />
+    <Compile Include="IO\CircularBuffer.cs" />
     <Compile Include="IVirtualDirectory.cs" />
     <Compile Include="IVirtualFile.cs" />
-    <Compile Include="DokanOperations\SafeDokanOperations.cs" />
+    <Compile Include="DokanOperations\SafeLoggingDokanOperations.cs" />
     <Compile Include="DokanOperations\TafsDokanOperations.cs" />
     <Compile Include="IVirtualPath.cs" />
     <Compile Include="IWriteableDirectory.cs" />
@@ -78,6 +81,8 @@
     <Compile Include="PhysicalFile.cs" />
     <Compile Include="VirtualFilesystem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Handles\VirtualFileSystemHandle.cs" />
+    <Compile Include="Handles\VirtualFileSystemHandleManager.cs" />
     <Compile Include="VirtualPathProvider.cs" />
   </ItemGroup>
   <ItemGroup>

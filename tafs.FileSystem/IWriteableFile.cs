@@ -5,7 +5,6 @@ namespace tafs.FileSystem
 {
     public interface IWriteableFile : IVirtualFile
     {
-        Stream Create(FileMode mode, FileAccess access, FileShare share);
         void Delete();
         void SetAttributes(FileAttributes attr);
         void SetFileTime(DateTime ctime, DateTime atime, DateTime mtime);

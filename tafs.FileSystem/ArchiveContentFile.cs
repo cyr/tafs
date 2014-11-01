@@ -24,7 +24,7 @@ namespace tafs.FileSystem
 
         public Stream Open(FileMode mode, FileAccess access, FileShare share)
         {
-            throw new NotImplementedException();
+            return _archive.OpenFileStream(this);
         }
 
         public FileInformation GetFileInformation()
